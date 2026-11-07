@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa de Oportunidades con IA | Plataforma Pública</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Supabase JS Client: Local con respaldo CDN -->
+  <script src="supabase.js"></script>
+  <script>
+    if (!window.supabase) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
+    }
+  </script>
+</head>
+<body>
+  <!-- Background Glow Accents -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="brand">
+          <div class="brand-badge" id="connection-status-badge">
+            <span class="live-dot" id="connection-dot"></span>
+            <span id="connection-status-text">Conectando a Supabase...</span>
+          </div>
+          <h1 class="brand-title">💡 Mapa de Oportunidades con <span class="gradient-text">IA</span></h1>
+          <p class="brand-subtitle">
+            Descubre y comparte oportunidades de negocio detectadas en ciudades de todo el mundo. 
+            Cualquier persona puede publicar y explorar en tiempo real.
+          </p>
+        </div>
+        <div class="header-actions">
+          <button id="btn-open-modal" class="btn btn-primary shadow-glow">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Publicar Oportunidad
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Stats Row -->
+      <div class="stats-bar">
+        <div class="stat-item">
+          <span class="stat-number" id="stat-total">0</span>
+          <span class="stat-label">Oportunidades</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number" id="stat-cities">0</span>
+          <span class="stat-label">Ciudades</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number" id="stat-countries">0</span>
+          <span class="stat-label">Países</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number" id="stat-likes">0</span>
+          <span class="stat-label">Total Likes</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Controls / Filters Section -->
+    <section class="controls-card">
+      <div class="search-box">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" placeholder="Buscar por palabra clave, problema o solución...">
+      </div>
+
+      <div class="filters-row">
+        <div class="filter-group">
+          <label for="filter-country">País</label>
+          <select id="filter-country">
+            <option value="">Todos los países</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-city">Ciudad</label>
+          <select id="filter-city">
+            <option value="">Todas las ciudades</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-category">Categoría</label>
+          <select id="filter-category">
+            <option value="">Todas las categorías</option>
+            <option value="Sostenibilidad">Sostenibilidad</option>
+            <option value="Agrotech">Agrotech</option>
+            <option value="Fintech">Fintech</option>
+            <option value="Turismo">Turismo</option>
+            <option value="Salud">Salud</option>
+            <option value="Educación">Educación</option>
+            <option value="Movilidad">Movilidad & Logística</option>
+            <option value="Comercio">Comercio & Retail</option>
+            <option value="Smart City">Smart City</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+
+        <div class="filter-actions">
+          <button id="btn-clear-filters" class="btn btn-secondary" title="Restablecer filtros">
+            Limpiar
+          </button>
+          <button id="btn-refresh" class="btn btn-secondary" title="Sincronizar con Supabase">
+            <svg id="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            Recargar
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content: Opportunities List -->
+    <main>
+      <div class="list-header">
+        <h2 class="section-title">
+          Oportunidades Registradas
+          <span class="count-badge" id="visible-count">0</span>
+        </h2>
+        <div class="sort-wrapper">
+          <label for="sort-select">Ordenar por:</label>
+          <select id="sort-select">
+            <option value="newest">Más recientes primero</option>
+            <option value="likes">Más votadas (Likes)</option>
+            <option value="name">Alfabético (A-Z)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Opportunities Grid -->
+      <div id="opportunities-grid" class="cards-grid">
+        <!-- Rendered dynamically via app.js -->
+      </div>
+
+      <!-- Loading State -->
+      <div id="loading-state" class="state-message">
+        <div class="spinner"></div>
+        <p>Cargando oportunidades desde Supabase...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="state-message hidden">
+        <div class="empty-icon">🔍</div>
+        <h3>No se encontraron oportunidades</h3>
+        <p>Intenta ajustar tus filtros de búsqueda o sé el primero en publicar una oportunidad en esta categoría o ciudad.</p>
+        <button class="btn btn-primary mt-3" id="btn-empty-publish">
+          + Publicar una nueva oportunidad
+        </button>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>
+        <strong>Mapa de Oportunidades con IA</strong> • Base de datos pública sincronizada en la nube con Supabase.
+      </p>
+      <p class="footer-sub">
+        Todos los datos son públicos y accesibles en tiempo real desde cualquier dispositivo o navegador.
+      </p>
+    </footer>
+  </div>
+
+  <!-- Modal: Publicar Oportunidad -->
+  <div id="modal-container" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">🚀 Publicar Nueva Oportunidad</h2>
+          <p class="modal-subtitle">Se guardará directamente en Supabase y será visible de inmediato para todos.</p>
+        </div>
+        <button id="btn-close-modal" class="btn-close" aria-label="Cerrar modal">&times;</button>
+      </div>
+
+      <form id="opportunity-form" class="modal-form">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="input-name">Nombre de la oportunidad <span class="required">*</span></label>
+            <input type="text" id="input-name" placeholder="Ej. Detección Inteligente de Fugas de Agua Potable" required>
+          </div>
+
+          <div class="form-group">
+            <label for="input-city">Ciudad <span class="required">*</span></label>
+            <input type="text" id="input-city" placeholder="Ej. Lima, Medellín, Monterrey..." required>
+          </div>
+
+          <div class="form-group">
+            <label for="input-country">País <span class="required">*</span></label>
+            <input type="text" id="input-country" placeholder="Ej. Perú, Colombia, México..." required>
+          </div>
+
+          <div class="form-group">
+            <label for="input-category">Categoría <span class="required">*</span></label>
+            <select id="input-category" required>
+              <option value="" disabled selected>Selecciona una categoría</option>
+              <option value="Sostenibilidad">Sostenibilidad</option>
+              <option value="Agrotech">Agrotech</option>
+              <option value="Fintech">Fintech</option>
+              <option value="Turismo">Turismo</option>
+              <option value="Salud">Salud</option>
+              <option value="Educación">Educación</option>
+              <option value="Movilidad">Movilidad & Logística</option>
+              <option value="Comercio">Comercio & Retail</option>
+              <option value="Smart City">Smart City</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="input-potential">Potencial de negocio <span class="required">*</span></label>
+            <select id="input-potential" required>
+              <option value="Alto" selected>Alto</option>
+              <option value="Medio">Medio</option>
+              <option value="Escalable Global">Escalable Global</option>
+            </select>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="input-problem">Problema detectado en la ciudad <span class="required">*</span></label>
+            <textarea id="input-problem" rows="3" placeholder="¿Qué problema real, ineficiencia o necesidad existe en esa localidad?" required></textarea>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="input-ai-solution">Solución propuesta con Inteligencia Artificial <span class="required">*</span></label>
+            <textarea id="input-ai-solution" rows="3" placeholder="¿Cómo la IA (visión computacional, modelos predictivos, LLMs, IoT) resuelve este problema de manera escalable?" required></textarea>
+          </div>
+        </div>
+
+        <div id="form-error" class="form-alert error-alert hidden"></div>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-cancel" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" id="btn-submit" class="btn btn-primary">
+            <span id="btn-submit-text">Guardar en Supabase</span>
+            <div id="btn-submit-spinner" class="spinner-small hidden"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast hidden">
+    <span id="toast-message"></span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
